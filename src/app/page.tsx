@@ -16,31 +16,50 @@ export default function Dashboard() {
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const res = await fetch("/api/championships");
-      const data = await res.json();
-      if (!cancelled) setList(data);
+      try {
+        const res = await fetch("/api/championships");
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        if (!cancelled) setList(data);
+      } catch (e) {
+        if (!cancelled) setError("Erro ao carregar campeonatos");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
     return () => { cancelled = true; };
   }, []);
 
   async function create() {
     if (!name.trim()) return;
+    setError("");
     const res = await fetch("/api/championships", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: name.trim(), notes: notes.trim() || null }),
     });
-    if (res.ok) {
-      setShowModal(false);
-      setName("");
-      setNotes("");
+    if (!res.ok) {
+      const err = await res.text();
+      setError(err || "Erro ao criar campeonato");
+      return;
+    }
+    setShowModal(false);
+    setName("");
+    setNotes("");
+    setError("");
+    try {
       const refresh = await fetch("/api/championships");
+      if (!refresh.ok) throw new Error();
       setList(await refresh.json());
+    } catch {
+      setError("Campeonato criado, mas erro ao atualizar lista");
     }
   }
 
@@ -58,17 +77,27 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold tracking-tight">FIFA Champs</h1>
           <p className="text-gray-500 text-sm mt-1">Gerenciamento de campeonatos</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="bg-gray-900 hover:bg-gray-800 text-white px-5 py-2.5 rounded-lg font-medium transition-colors text-sm">
+        <button onClick={() => { setShowModal(true); setError(""); }} className="bg-gray-900 hover:bg-gray-800 text-white px-5 py-2.5 rounded-lg font-medium transition-colors text-sm">
           + Novo Campeonato
         </button>
       </div>
 
-      {list.length === 0 ? (
+      {error && !showModal && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-center py-20 text-gray-400">
+          <p className="text-lg">Carregando...</p>
+        </div>
+      ) : list.length === 0 && !error ? (
         <div className="text-center py-20 text-gray-400">
           <p className="text-lg">Nenhum campeonato ainda.</p>
           <p className="mt-2">Crie o primeiro para começar!</p>
         </div>
-      ) : (
+      ) : list.length > 0 ? (
         <div className="space-y-3">
           {list.map((c) => (
             <Link key={c.id} href={`/championships/${c.id}`} className="block bg-white hover:bg-gray-50 border border-gray-200 rounded-xl p-5 transition-colors shadow-sm">
@@ -85,12 +114,17 @@ export default function Dashboard() {
             </Link>
           ))}
         </div>
-      )}
+      ) : null}
 
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
           <div className="bg-white rounded-xl p-6 w-full max-w-md border border-gray-200 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-gray-900 mb-4">Novo Campeonato</h2>
+            {error && (
+              <div className="mb-3 p-2 bg-red-50 border border-red-200 text-red-700 rounded text-sm">
+                {error}
+              </div>
+            )}
             <input
               autoFocus
               placeholder="Nome do campeonato"
