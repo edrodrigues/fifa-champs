@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { championships, participants, matches } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 
 const db = () => getDb();
 import { drawGroups, generateRoundRobin, generateKnockoutBracket, getPhaseLabel, getAdvancingCount } from "@/lib/tournament-engine";
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
   for (const group of groups) {
     await db().update(participants).set({ group_letter: group.letter }).where(
-      and(eq(participants.championship_id, championship_id), ...group.participantIds.map((pid) => eq(participants.id, pid)))
+      and(eq(participants.championship_id, championship_id), inArray(participants.id, group.participantIds))
     );
   }
 
