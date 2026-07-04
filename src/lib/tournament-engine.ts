@@ -159,10 +159,10 @@ export function generateKnockoutBracket(advancingIds: number[]): BracketSlot[] {
   return slots;
 }
 
-export function getPhaseLabel(round: number, totalRounds: number): "round_of_16" | "quarterfinal" | "semifinal" | "final" | "group" {
-  if (round === totalRounds - 1) return "final";
-  if (round === totalRounds - 2) return "semifinal";
-  if (round === totalRounds - 3) return "quarterfinal";
-  if (round === 0) return "round_of_16";
-  return "group";
+export function getPhaseLabel(round: number, totalRounds: number): "round_of_16" | "quarterfinal" | "semifinal" | "final" {
+  const fromEnd = totalRounds - 1 - round;
+  if (fromEnd === 0) return "final";
+  if (fromEnd === 1) return "semifinal";
+  if (fromEnd === 2) return "quarterfinal";
+  return "round_of_16";
 }

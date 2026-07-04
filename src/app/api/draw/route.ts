@@ -57,7 +57,7 @@ export async function POST(request: Request) {
   if (totalAdvancing >= 2) {
     const knockoutSlots = generateKnockoutBracket(Array.from({ length: totalAdvancing }, (_, i) => i));
     const totalRounds = knockoutSlots.length > 0
-      ? Math.max(...knockoutSlots.map((s) => s.round))
+      ? Math.max(...knockoutSlots.map((s) => s.round)) + 1
       : 0;
 
     const now = new Date();
