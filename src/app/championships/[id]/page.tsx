@@ -397,7 +397,7 @@ function MatchCard({
       tone,
     }: {
       place: string;
-      name: string;
+      name: string | null;
       tone: "gold" | "silver" | "bronze";
     }) {
       const styles = {
@@ -409,7 +409,7 @@ function MatchCard({
       return (
         <div className={`rounded-2xl border px-4 py-4 text-center shadow-sm ${styles[tone]}`}>
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] opacity-80">{place}</p>
-          <p className="mt-2 text-base font-bold leading-tight">{name}</p>
+            <p className="mt-2 text-base font-bold leading-tight">{name ?? "A definir"}</p>
         </div>
       );
     }
