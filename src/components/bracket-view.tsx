@@ -18,8 +18,9 @@ interface Match {
   winner_id: number | null;
 }
 
-const CARD_H = 118;
-const CARD_GAP = 24;
+const CARD_W = 264;
+const CARD_H = 272;
+const CARD_GAP = 28;
 
 function getFlag(name: string): string {
   const map: Record<string, string> = {
@@ -58,26 +59,26 @@ function formatDate(dateStr: string | null): string {
   const now = new Date();
   const isToday = d.toDateString() === now.toDateString();
   if (isToday) {
-    return `Today, ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+    return `Hoje, ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
   }
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
   return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
 }
 
 function getRoundLabel(round: number, totalRounds: number): string {
   const slots = Math.pow(2, totalRounds);
-  if (slots >= 32 && round === 0) return "Round of 32";
-  if (slots >= 16 && round === (totalRounds >= 4 ? totalRounds - 4 : 0)) return "Round of 16";
-  if (slots >= 8 && round === (totalRounds >= 3 ? totalRounds - 3 : Math.max(0, totalRounds - 3))) return "Quarter-finals";
-  if (slots >= 4 && round === (totalRounds >= 2 ? totalRounds - 2 : Math.max(0, totalRounds - 2))) return "Semifinals";
+  if (slots >= 32 && round === 0) return "Fase de 32";
+  if (slots >= 16 && round === (totalRounds >= 4 ? totalRounds - 4 : 0)) return "Oitavas de final";
+  if (slots >= 8 && round === (totalRounds >= 3 ? totalRounds - 3 : Math.max(0, totalRounds - 3))) return "Quartas de final";
+  if (slots >= 4 && round === (totalRounds >= 2 ? totalRounds - 2 : Math.max(0, totalRounds - 2))) return "Semifinais";
   if (round === totalRounds) return "Final";
   const diff = totalRounds - round;
-  if (diff === 4) return "Round of 16";
-  if (diff === 3) return "Quarter-finals";
-  if (diff === 2) return "Semifinals";
+  if (diff === 4) return "Oitavas de final";
+  if (diff === 3) return "Quartas de final";
+  if (diff === 2) return "Semifinais";
   if (diff === 1) return "Final";
-  return `Round ${round + 1}`;
+  return `Rodada ${round + 1}`;
 }
 
 function WinnerArrow() {
@@ -129,7 +130,7 @@ function ConnectorSVG({ layouts, roundIdx, cardH }: { layouts: number[][]; round
   }
 
   return (
-    <svg width={w} height={totalH} className="flex-shrink-0" style={{ marginTop: 0 }}>
+    <svg width={w} height={totalH} className="flex-shrink-0" style={{ marginTop: 28 }}>
       {pairs.map(({ y1, y2, joinY }, i) => (
         <g key={i}>
           <path d={`M 0 ${y1} L ${w / 2} ${y1} L ${w / 2} ${joinY} L ${w} ${joinY}`} stroke="#d1d5db" fill="none" strokeWidth={1.5} />
@@ -147,14 +148,21 @@ export function BracketView({
 }: {
   matches: Match[];
   getParticipantName: (id: number | null) => string;
-  onSubmitScore: (id: number, home: number, away: number) => void;
+  onSubmitScore: (
+    id: number,
+    home: number,
+    away: number,
+    homePenalty?: number,
+    awayPenalty?: number,
+  ) => Promise<string | null> | void;
 }) {
-  const totalRounds = matches.length > 0 ? Math.max(...matches.map((m) => m.round ?? 0)) : 0;
+  const mainBracketMatches = matches.filter((m) => m.phase !== "group" && m.phase !== "third_place");
+  const totalRounds = mainBracketMatches.length > 0 ? Math.max(...mainBracketMatches.map((m) => m.round ?? 0)) + 1 : 0;
 
   const { roundMatches, layouts, roundNumbers } = useMemo(() => {
-    const rounds = [...new Set(matches.map((m) => m.round ?? 0))].sort((a, b) => a - b);
+    const rounds = [...new Set(mainBracketMatches.map((m) => m.round ?? 0))].sort((a, b) => a - b);
     const grouped = rounds.map((r) =>
-      matches.filter((m) => m.round === r).sort((a, b) => (a.bracket_position ?? 0) - (b.bracket_position ?? 0))
+      mainBracketMatches.filter((m) => m.round === r).sort((a, b) => (a.bracket_position ?? 0) - (b.bracket_position ?? 0))
     );
     return {
       roundMatches: grouped,
@@ -172,9 +180,9 @@ export function BracketView({
   const thirdPlaceMatches = matches.filter((m) => m.phase === "third_place");
 
   return (
-    <div className="select-none">
+    <div className="select-none rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-4 shadow-sm md:p-6">
       <div className="flex items-center gap-3 mb-6">
-        <h2 className="text-2xl font-bold tracking-tight text-gray-900">Knockout</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-gray-900">Mata-mata</h2>
         <div className="h-px flex-1 bg-gray-200" />
       </div>
 
@@ -182,11 +190,39 @@ export function BracketView({
         <div className="flex items-start gap-0 min-w-max">
           {displayedRounds.map((rMatches, idx) => (
             <div key={roundNumbers[idx]} className="flex items-start gap-0">
-              <div className="flex flex-col" style={{ gap: 0 }}>
-                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 pl-1">
-                  {getRoundLabel(roundNumbers[idx], totalRounds)}
-                </h3>
-                <div className="relative">
+              <div className="flex flex-col" style={{ gap: 0, width: CARD_W }}>
+                {(() => {
+                  const roundLabel = getRoundLabel(roundNumbers[idx], totalRounds);
+                  const isFinalRound = roundLabel === "Final";
+                  const isSemifinalRound = roundLabel === "Semifinais";
+                  const badgeClass = isFinalRound
+                    ? "border-amber-200 bg-amber-50 text-amber-800"
+                    : isSemifinalRound
+                      ? "border-sky-200 bg-sky-50 text-sky-800"
+                      : "border-transparent bg-transparent text-gray-400";
+                  const helperText = isFinalRound
+                    ? "Decide o campeão"
+                    : isSemifinalRound
+                      ? "Vale vaga na final"
+                      : "";
+
+                  return (
+                    <div className="mb-3 pl-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className={`text-xs font-semibold uppercase tracking-wider ${isFinalRound || isSemifinalRound ? "text-gray-900" : "text-gray-400"}`}>
+                          {roundLabel}
+                        </h3>
+                        {(isFinalRound || isSemifinalRound) && (
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${badgeClass}`}>
+                            {isFinalRound ? "Final" : "Semifinal"}
+                          </span>
+                        )}
+                      </div>
+                      {helperText && <p className={`mt-1 text-[11px] ${isFinalRound ? "text-amber-700" : "text-sky-700"}`}>{helperText}</p>}
+                    </div>
+                  );
+                })()}
+                <div className="relative" style={{ width: CARD_W }}>
                   {rMatches.map((m, pIdx) => {
                     const top = displayedLayouts[idx]?.[pIdx] ?? pIdx * (CARD_H + CARD_GAP);
                     return (
@@ -198,6 +234,7 @@ export function BracketView({
                           match={m}
                           getParticipantName={getParticipantName}
                           onSubmitScore={onSubmitScore}
+                          roundLabel={getRoundLabel(roundNumbers[idx], totalRounds)}
                         />
                       </div>
                     );
@@ -230,14 +267,15 @@ export function BracketView({
 
       {thirdPlaceMatches.length > 0 && (
         <div className="mt-10">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Third Place Match</h3>
+          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Disputa de 3º lugar</h3>
           <div className="flex gap-4">
             {thirdPlaceMatches.map((m) => (
-              <div key={m.id} className="w-[240px]">
+              <div key={m.id} className="w-[264px]">
                 <BracketMatchCard
                   match={m}
                   getParticipantName={getParticipantName}
                   onSubmitScore={onSubmitScore}
+                  roundLabel="Disputa de 3º lugar"
                 />
               </div>
             ))}
@@ -252,13 +290,24 @@ function BracketMatchCard({
   match,
   getParticipantName,
   onSubmitScore,
+  roundLabel,
 }: {
   match: Match;
   getParticipantName: (id: number | null) => string;
-  onSubmitScore: (id: number, home: number, away: number) => void;
+  onSubmitScore: (
+    id: number,
+    home: number,
+    away: number,
+    homePenalty?: number,
+    awayPenalty?: number,
+  ) => Promise<string | null> | void;
+  roundLabel: string;
 }) {
   const [homeScore, setHomeScore] = useState(match.score_home ?? 0);
   const [awayScore, setAwayScore] = useState(match.score_away ?? 0);
+  const [homePenalty, setHomePenalty] = useState(match.score_home_penalty ?? 0);
+  const [awayPenalty, setAwayPenalty] = useState(match.score_away_penalty ?? 0);
+  const [error, setError] = useState("");
 
   const home = getParticipantName(match.player_home_id);
   const away = getParticipantName(match.player_away_id);
@@ -266,98 +315,165 @@ function BracketMatchCard({
   const isAwayWinner = match.winner_id === match.player_away_id;
   const hasPenalties = match.score_home_penalty != null || match.score_away_penalty != null;
   const isLive = false;
+  const hasParticipants = Boolean(match.player_home_id && match.player_away_id);
+  const isCompleted = match.status === "completed";
+  const isDraw = homeScore === awayScore;
+  const statusLabel = isCompleted ? (hasPenalties ? "Final nos pênaltis" : "Concluída") : hasParticipants ? "Pronta" : "Aguardando classificados";
+  const statusClass = isCompleted
+    ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+    : hasParticipants
+      ? "bg-slate-100 text-slate-700 border-slate-200"
+      : "bg-amber-50 text-amber-700 border-amber-100";
+  const isFinalRound = roundLabel === "Final";
+  const isSemifinalRound = roundLabel === "Semifinais";
+  const isThirdPlace = roundLabel === "Disputa de 3º lugar";
+  const wrapClass = isFinalRound
+    ? "border-amber-200 ring-1 ring-amber-100"
+    : isSemifinalRound
+      ? "border-sky-200 ring-1 ring-sky-100"
+      : isThirdPlace
+        ? "border-violet-200 ring-1 ring-violet-100"
+        : hasParticipants
+          ? "border-gray-200"
+          : "border-amber-100";
+  const chipClass = isFinalRound
+    ? "bg-amber-50 text-amber-800 border-amber-200"
+    : isSemifinalRound
+      ? "bg-sky-50 text-sky-800 border-sky-200"
+      : isThirdPlace
+        ? "bg-violet-50 text-violet-800 border-violet-200"
+        : statusClass;
 
   return (
-    <div className="w-[240px] bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-100 bg-gray-50">
-        <span className="text-[11px] text-gray-500">
-          {match.status === "completed" ? (
-            <span className={`font-semibold ${hasPenalties ? "text-gray-600" : "text-gray-600"}`}>
-              {hasPenalties ? "FT (P)" : "FT"}
-            </span>
-          ) : isLive ? (
-            <span className="text-red-600 font-semibold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse" />
-              Live
-            </span>
-          ) : (
-            formatDate(match.scheduled_date) || "TBD"
-          )}
+    <form
+      onSubmit={async (event) => {
+        event.preventDefault();
+        if (!hasParticipants || match.status !== "pending") return;
+        setError("");
+        const result = await onSubmitScore(match.id, homeScore, awayScore, isDraw ? homePenalty : undefined, isDraw ? awayPenalty : undefined);
+        if (typeof result === "string") setError(result);
+      }}
+      className={`w-[264px] bg-white rounded-2xl border shadow-sm overflow-hidden ${wrapClass}`}
+    >
+      <div className="flex items-center justify-between gap-3 px-3 py-2 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+        <span className="text-[11px] text-slate-500">{formatDate(match.scheduled_date) || "A definir"}</span>
+        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${chipClass}`}>
+          {isFinalRound ? "FINAL" : isSemifinalRound ? "SEMIFINAL" : isThirdPlace ? "3º LUGAR" : statusLabel}
         </span>
       </div>
 
-      <div className="px-3 py-2 space-y-1.5">
-        {/* Home team */}
-        <div className="flex items-center gap-2">
-          <Avatar name={home} />
-          <span className={`flex-1 text-sm truncate ${isHomeWinner ? "font-semibold text-gray-900" : match.status === "completed" ? "text-gray-400" : "text-gray-700"}`}>
-            {home}
-          </span>
-          <div className="flex items-center gap-1">
-            {match.status === "completed" ? (
+      <div className="px-3 py-3 space-y-2">
+        <div className={`grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl border px-2.5 py-2 ${isHomeWinner ? "border-emerald-100 bg-emerald-50/70" : "border-slate-100 bg-slate-50/70"}`}>
+          <div className="flex min-w-0 items-center gap-2">
+            <Avatar name={home} />
+            <span className={`min-w-0 truncate text-sm ${isHomeWinner ? "font-semibold text-gray-900" : isCompleted ? "text-gray-400" : "text-gray-700"}`}>
+              {home}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {isCompleted ? (
               <>
                 <span className={`text-sm font-bold min-w-[1.5ch] text-right ${isHomeWinner ? "text-gray-900" : "text-gray-400"}`}>
                   {match.score_home}
                 </span>
-                {hasPenalties && match.score_home_penalty != null && (
-                  <span className="text-[10px] text-gray-400">({match.score_home_penalty})</span>
-                )}
+                {hasPenalties && match.score_home_penalty != null && <span className="text-[10px] text-gray-400">({match.score_home_penalty})</span>}
                 {isHomeWinner && <WinnerArrow />}
               </>
             ) : (
               <input
                 type="number"
                 min={0}
+                inputMode="numeric"
+                name={`match-${match.id}-home-score`}
+                aria-label={`Placar de ${home}`}
                 value={homeScore}
                 onChange={(e) => setHomeScore(Number(e.target.value))}
-                className="w-8 text-center text-sm border border-gray-200 rounded py-0.5 text-gray-900 bg-white"
-                disabled={!match.player_home_id || !match.player_away_id}
+                className="h-10 w-12 rounded-lg border border-slate-300 bg-white text-center text-sm font-semibold text-slate-900 shadow-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 disabled:bg-slate-100 disabled:text-slate-400"
+                disabled={!hasParticipants}
               />
             )}
           </div>
         </div>
 
-        {/* Away team */}
-        <div className="flex items-center gap-2">
-          <Avatar name={away} />
-          <span className={`flex-1 text-sm truncate ${isAwayWinner ? "font-semibold text-gray-900" : match.status === "completed" ? "text-gray-400" : "text-gray-700"}`}>
-            {away}
-          </span>
-          <div className="flex items-center gap-1">
-            {match.status === "completed" ? (
+        <div className={`grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl border px-2.5 py-2 ${isAwayWinner ? "border-emerald-100 bg-emerald-50/70" : "border-slate-100 bg-slate-50/70"}`}>
+          <div className="flex min-w-0 items-center gap-2">
+            <Avatar name={away} />
+            <span className={`min-w-0 truncate text-sm ${isAwayWinner ? "font-semibold text-gray-900" : isCompleted ? "text-gray-400" : "text-gray-700"}`}>
+              {away}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {isCompleted ? (
               <>
                 <span className={`text-sm font-bold min-w-[1.5ch] text-right ${isAwayWinner ? "text-gray-900" : "text-gray-400"}`}>
                   {match.score_away}
                 </span>
-                {hasPenalties && match.score_away_penalty != null && (
-                  <span className="text-[10px] text-gray-400">({match.score_away_penalty})</span>
-                )}
+                {hasPenalties && match.score_away_penalty != null && <span className="text-[10px] text-gray-400">({match.score_away_penalty})</span>}
                 {isAwayWinner && <WinnerArrow />}
               </>
             ) : (
               <input
                 type="number"
                 min={0}
+                inputMode="numeric"
+                name={`match-${match.id}-away-score`}
+                aria-label={`Placar de ${away}`}
                 value={awayScore}
                 onChange={(e) => setAwayScore(Number(e.target.value))}
-                className="w-8 text-center text-sm border border-gray-200 rounded py-0.5 text-gray-900 bg-white"
-                disabled={!match.player_home_id || !match.player_away_id}
+                className="h-10 w-12 rounded-lg border border-slate-300 bg-white text-center text-sm font-semibold text-slate-900 shadow-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 disabled:bg-slate-100 disabled:text-slate-400"
+                disabled={!hasParticipants}
               />
             )}
           </div>
         </div>
+
+        {!hasParticipants && (
+          <p className="text-xs text-amber-700">Aguardando a definição dos classificados para liberar o placar.</p>
+        )}
+
+        {!isCompleted && hasParticipants && isDraw && (
+          <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-2.5 py-2">
+            <div className="flex items-center justify-between gap-2 text-[11px] font-medium uppercase tracking-wider text-slate-400">
+              <span>Pênaltis</span>
+              <span>Necessário para desempate</span>
+            </div>
+            <div className="mt-2 flex items-center gap-1.5">
+              <input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                name={`match-${match.id}-home-penalty`}
+                aria-label={`Pênaltis de ${home}`}
+                value={homePenalty}
+                onChange={(e) => setHomePenalty(Number(e.target.value))}
+                className="h-9 w-12 rounded-lg border border-slate-300 bg-white text-center text-sm font-semibold text-slate-900 shadow-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+              />
+              <span className="text-slate-300">-</span>
+              <input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                name={`match-${match.id}-away-penalty`}
+                aria-label={`Pênaltis de ${away}`}
+                value={awayPenalty}
+                onChange={(e) => setAwayPenalty(Number(e.target.value))}
+                className="h-9 w-12 rounded-lg border border-slate-300 bg-white text-center text-sm font-semibold text-slate-900 shadow-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+              />
+            </div>
+          </div>
+        )}
+
+        {isCompleted ? null : hasParticipants ? (
+          <button
+            type="submit"
+            className="w-full rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/20"
+          >
+            Salvar placar
+          </button>
+        ) : null}
       </div>
 
-      {match.status === "pending" && match.player_home_id && match.player_away_id && (
-        <div className="px-3 pb-2">
-          <button
-            onClick={() => onSubmitScore(match.id, homeScore, awayScore)}
-            className="w-full bg-gray-900 hover:bg-gray-800 text-white text-[11px] font-medium py-1.5 rounded transition-colors"
-          >
-            Salvar
-          </button>
-        </div>
-      )}
-    </div>
+      {error && <p className="px-3 pb-3 text-xs text-red-600">{error}</p>}
+    </form>
   );
 }

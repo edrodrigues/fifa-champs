@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BracketView } from "@/components/bracket-view";
+import { deriveChampionshipPodium } from "@/lib/championship-podium";
 
 interface Participant {
   id: number;
@@ -195,7 +196,8 @@ export default function ChampionshipPage({ params }: { params: Promise<{ id: str
 
   const allGroupMatchesCompleted = groupMatches.length > 0 && groupMatches.every((m) => m.status === "completed");
   const finalMatch = knockoutMatches.find((m) => m.phase === "final");
-  const champion = finalMatch?.winner_id ? getParticipantName(finalMatch.winner_id) : null;
+  const podium = deriveChampionshipPodium(participants, matches);
+  const championshipFinished = champ.status === "completed" || finalMatch?.status === "completed";
 
   return (
     <div className="max-w-7xl mx-auto p-6">
@@ -211,10 +213,17 @@ export default function ChampionshipPage({ params }: { params: Promise<{ id: str
         </span>
       </div>
 
-      {champion && (
-        <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-6 mb-6 text-center">
-          <p className="text-xs text-yellow-700 uppercase tracking-wider font-semibold">Campeão</p>
-          <p className="text-3xl font-bold text-yellow-800 mt-1">{champion}</p>
+      {championshipFinished && podium.first && (
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-yellow-50 to-white p-4 shadow-sm md:p-6">
+          <div className="text-center mb-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Pódio final</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900">Classificação do campeonato</p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <PodiumCard place="1º" name={podium.first} tone="gold" />
+            <PodiumCard place="2º" name={podium.second} tone="silver" />
+            <PodiumCard place="3º" name={podium.third} tone="bronze" />
+          </div>
         </div>
       )}
 
@@ -286,7 +295,6 @@ export default function ChampionshipPage({ params }: { params: Promise<{ id: str
 
       {knockoutMatches.length > 0 && champ.status !== "groups" && (
         <div className="mb-8">
-          <h2 className="text-xl font-bold mb-4 text-gray-900">Mata-mata</h2>
           <BracketView
             matches={knockoutMatches}
             getParticipantName={getParticipantName}
@@ -382,5 +390,28 @@ function MatchCard({
     </div>
   );
 }
+
+    function PodiumCard({
+      place,
+      name,
+      tone,
+    }: {
+      place: string;
+      name: string;
+      tone: "gold" | "silver" | "bronze";
+    }) {
+      const styles = {
+        gold: "border-amber-200 bg-amber-50 text-amber-900",
+        silver: "border-slate-200 bg-slate-50 text-slate-800",
+        bronze: "border-orange-200 bg-orange-50 text-orange-900",
+      } as const;
+
+      return (
+        <div className={`rounded-2xl border px-4 py-4 text-center shadow-sm ${styles[tone]}`}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] opacity-80">{place}</p>
+          <p className="mt-2 text-base font-bold leading-tight">{name}</p>
+        </div>
+      );
+    }
 
 

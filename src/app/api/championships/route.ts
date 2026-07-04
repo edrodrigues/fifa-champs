@@ -1,14 +1,29 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
-import { championships } from "@/db/schema";
+import { championships, participants, matches } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { deriveChampionshipPodium } from "@/lib/championship-podium";
 
 const db = () => getDb();
 
 export async function GET() {
   try {
     const list = await db().select().from(championships).orderBy(desc(championships.created_at));
-    return NextResponse.json(list);
+    const enriched = await Promise.all(
+      list.map(async (champ) => {
+        const [parts, matchList] = await Promise.all([
+          db().select().from(participants).where(eq(participants.championship_id, champ.id)),
+          db().select().from(matches).where(eq(matches.championship_id, champ.id)),
+        ]);
+
+        return {
+          ...champ,
+          podium: deriveChampionshipPodium(parts, matchList),
+        };
+      }),
+    );
+
+    return NextResponse.json(enriched);
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

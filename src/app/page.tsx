@@ -9,6 +9,11 @@ interface Championship {
   status: string;
   notes: string | null;
   created_at: string;
+  podium?: {
+    first: string | null;
+    second: string | null;
+    third: string | null;
+  };
 }
 
 export default function Dashboard() {
@@ -153,6 +158,23 @@ export default function Dashboard() {
                   <div className="flex-1 min-w-0">
                     <h2 className="text-xl font-semibold text-gray-900 truncate">{c.name}</h2>
                     {c.notes && <p className="text-sm text-gray-500 mt-1 truncate">{c.notes}</p>}
+                    {c.status === "completed" && c.podium?.first && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                          1º {c.podium.first}
+                        </span>
+                        {c.podium.second && (
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                            2º {c.podium.second}
+                          </span>
+                        )}
+                        {c.podium.third && (
+                          <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-semibold text-orange-800">
+                            3º {c.podium.third}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 ml-4">
                     <span className={`text-xs font-medium px-3 py-1 rounded-full ${statusColors[c.status] || "bg-gray-100 text-gray-700"}`}>
