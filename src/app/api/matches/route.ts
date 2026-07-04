@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
-import { matches } from "@/db/schema";
+import { championships, matches } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
 const db = () => getDb();
@@ -61,10 +61,15 @@ export async function PATCH(request: Request) {
   }
 
   const allMatches = await db().select().from(matches).where(eq(matches.championship_id, match.championship_id));
-  const finalMatch = allMatches.find((m) => m.phase === "final");
-  if (finalMatch && finalMatch.status === "completed") {
-    await db().update(matches).set({ status: finalMatch.status }).where(
-      and(eq(matches.championship_id, match.championship_id), eq(matches.phase, "final"))
+  const knockoutMatches = allMatches.filter((m) => m.phase !== "group");
+  const requiredMatches = knockoutMatches.filter(
+    (m) => m.phase !== "third_place" || (m.player_home_id !== null && m.player_away_id !== null),
+  );
+  const championshipFinished = requiredMatches.length > 0 && requiredMatches.every((m) => m.status === "completed");
+
+  if (championshipFinished) {
+    await db().update(championships).set({ status: "completed", updated_at: new Date() }).where(
+      eq(championships.id, match.championship_id)
     );
   }
 
