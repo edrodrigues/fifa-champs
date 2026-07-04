@@ -154,13 +154,24 @@ export default function ChampionshipPage({ params }: { params: Promise<{ id: str
     setAdvancing(false);
   }
 
-  async function submitScore(matchId: number, scoreHome: number, scoreAway: number) {
+  async function submitScore(matchId: number, scoreHome: number, scoreAway: number, scoreHomePenalty?: number, scoreAwayPenalty?: number): Promise<string | null> {
     const res = await fetch("/api/matches", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: matchId, score_home: Number(scoreHome), score_away: Number(scoreAway) }),
+      body: JSON.stringify({
+        id: matchId,
+        score_home: Number(scoreHome),
+        score_away: Number(scoreAway),
+        score_home_penalty: scoreHomePenalty != null ? Number(scoreHomePenalty) : undefined,
+        score_away_penalty: scoreAwayPenalty != null ? Number(scoreAwayPenalty) : undefined,
+      }),
     });
-    if (res.ok) fetchData();
+    if (res.ok) {
+      fetchData();
+      return null;
+    }
+    const data = await res.json();
+    return data.error || "Erro ao salvar partida";
   }
 
   function getParticipantName(pid: number | null): string {
@@ -294,53 +305,80 @@ function MatchCard({
 }: {
   match: Match;
   getParticipantName: (id: number | null) => string;
-  onSubmitScore: (id: number, home: number, away: number) => void;
+  onSubmitScore: (id: number, home: number, away: number, homePenalty?: number, awayPenalty?: number) => Promise<string | null>;
 }) {
   const [homeScore, setHomeScore] = useState(match.score_home ?? 0);
   const [awayScore, setAwayScore] = useState(match.score_away ?? 0);
+  const [homePenalty, setHomePenalty] = useState(match.score_home_penalty ?? 0);
+  const [awayPenalty, setAwayPenalty] = useState(match.score_away_penalty ?? 0);
+  const [error, setError] = useState("");
 
   const isHomeWinner = match.winner_id === match.player_home_id;
   const pHome = getParticipantName(match.player_home_id);
   const pAway = getParticipantName(match.player_away_id);
 
   const hasPenalties = match.score_home_penalty != null || match.score_away_penalty != null;
+  const isDraw = homeScore === awayScore;
+
+  async function handleSave() {
+    setError("");
+    if (isDraw && homePenalty === awayPenalty) {
+      setError("Empate requer pênaltis com placar diferente");
+      return;
+    }
+    const err = await onSubmitScore(match.id, homeScore, awayScore, isDraw ? homePenalty : undefined, isDraw ? awayPenalty : undefined);
+    if (err) setError(err);
+  }
 
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-lg border ${match.status === "completed" ? "bg-gray-50 border-gray-300" : "bg-white border-gray-200"}`}>
-      <div className="flex-1 flex items-center gap-2 justify-end">
-        <span className={`text-sm font-medium ${isHomeWinner ? "text-gray-900" : match.status === "completed" ? "text-gray-400" : "text-gray-700"}`}>
-          {pHome}
-        </span>
-        <ParticipantAvatar name={pHome} />
-      </div>
-      {match.status === "completed" ? (
-        <div className="text-center min-w-[6ch]">
-          <span className="text-base font-bold text-gray-900">
-            {match.score_home}{hasPenalties && match.score_home_penalty != null ? ` (${match.score_home_penalty})` : ""}
+    <div>
+      <div className={`flex items-center gap-3 p-3 rounded-lg border ${match.status === "completed" ? "bg-gray-50 border-gray-300" : "bg-white border-gray-200"}`}>
+        <div className="flex-1 flex items-center gap-2 justify-end">
+          <span className={`text-sm font-medium ${isHomeWinner ? "text-gray-900" : match.status === "completed" ? "text-gray-400" : "text-gray-700"}`}>
+            {pHome}
           </span>
-          <span className="text-gray-300 mx-1">-</span>
-          <span className="text-base font-bold text-gray-900">
-            {match.score_away}{hasPenalties && match.score_away_penalty != null ? ` (${match.score_away_penalty})` : ""}
+          <ParticipantAvatar name={pHome} />
+        </div>
+        {match.status === "completed" ? (
+          <div className="text-center min-w-[6ch]">
+            <span className="text-base font-bold text-gray-900">
+              {match.score_home}{hasPenalties && match.score_home_penalty != null ? ` (${match.score_home_penalty})` : ""}
+            </span>
+            <span className="text-gray-300 mx-1">-</span>
+            <span className="text-base font-bold text-gray-900">
+              {match.score_away}{hasPenalties && match.score_away_penalty != null ? ` (${match.score_away_penalty})` : ""}
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-1">
+            <div className="flex items-center gap-1">
+              <input type="number" min={0} value={homeScore} onChange={(e) => setHomeScore(Number(e.target.value))} className="w-10 border border-gray-300 rounded text-center py-1 text-sm text-gray-900" />
+              <span className="text-gray-400 text-sm">x</span>
+              <input type="number" min={0} value={awayScore} onChange={(e) => setAwayScore(Number(e.target.value))} className="w-10 border border-gray-300 rounded text-center py-1 text-sm text-gray-900" />
+            </div>
+            {isDraw && (
+              <div className="flex items-center gap-1 mt-1">
+                <span className="text-[10px] text-gray-400 mr-1">Pênaltis:</span>
+                <input type="number" min={0} value={homePenalty} onChange={(e) => setHomePenalty(Number(e.target.value))} className="w-8 border border-gray-300 rounded text-center py-0.5 text-xs text-gray-900" />
+                <span className="text-gray-300 text-xs">-</span>
+                <input type="number" min={0} value={awayPenalty} onChange={(e) => setAwayPenalty(Number(e.target.value))} className="w-8 border border-gray-300 rounded text-center py-0.5 text-xs text-gray-900" />
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex-1 flex items-center gap-2">
+          <ParticipantAvatar name={pAway} />
+          <span className={`text-sm font-medium ${!isHomeWinner && match.winner_id ? "text-gray-900" : match.status === "completed" ? "text-gray-400" : "text-gray-700"}`}>
+            {pAway}
           </span>
         </div>
-      ) : (
-        <div className="flex items-center gap-1">
-          <input type="number" min={0} value={homeScore} onChange={(e) => setHomeScore(Number(e.target.value))} className="w-10 border border-gray-300 rounded text-center py-1 text-sm text-gray-900" />
-          <span className="text-gray-400 text-sm">x</span>
-          <input type="number" min={0} value={awayScore} onChange={(e) => setAwayScore(Number(e.target.value))} className="w-10 border border-gray-300 rounded text-center py-1 text-sm text-gray-900" />
-        </div>
-      )}
-      <div className="flex-1 flex items-center gap-2">
-        <ParticipantAvatar name={pAway} />
-        <span className={`text-sm font-medium ${!isHomeWinner && match.winner_id ? "text-gray-900" : match.status === "completed" ? "text-gray-400" : "text-gray-700"}`}>
-          {pAway}
-        </span>
+        {match.status === "pending" && match.player_home_id && match.player_away_id && (
+          <button onClick={handleSave} className="bg-gray-900 hover:bg-gray-800 text-white text-sm px-3 py-1.5 rounded transition-colors">
+            Salvar
+          </button>
+        )}
       </div>
-      {match.status === "pending" && match.player_home_id && match.player_away_id && (
-        <button onClick={() => onSubmitScore(match.id, homeScore, awayScore)} className="bg-gray-900 hover:bg-gray-800 text-white text-sm px-3 py-1.5 rounded transition-colors">
-          Salvar
-        </button>
-      )}
+      {error && <p className="text-red-600 text-xs mt-1 ml-1">{error}</p>}
     </div>
   );
 }
