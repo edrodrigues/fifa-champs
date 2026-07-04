@@ -1,4 +1,4 @@
-function shuffle<T>(arr: T[]): T[] {
+﻿function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -16,9 +16,9 @@ export function drawGroups(participantIds: number[]): GroupInfo[] {
   const shuffled = shuffle(participantIds);
   const total = shuffled.length;
   const minGroupSize = 2;
-  const maxGroupSize = 6;
+  const targetSize = total <= 12 ? 4 : 6;
 
-  let numGroups = Math.ceil(total / maxGroupSize);
+  let numGroups = Math.ceil(total / targetSize);
   if (total / numGroups < minGroupSize) {
     numGroups = Math.floor(total / minGroupSize);
   }
@@ -125,6 +125,8 @@ function getHeadToHead(a: number, b: number, results: MatchResult[]): number {
 }
 
 export function getAdvancingCount(participantCount: number): number {
+  if (participantCount === 6) return 4;
+  if (participantCount === 4) return 2;
   return Math.floor(participantCount / 2);
 }
 

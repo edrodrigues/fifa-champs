@@ -4,6 +4,8 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BracketView } from "@/components/bracket-view";
 import { deriveChampionshipPodium } from "@/lib/championship-podium";
+import { calculateGroupStandings } from "@/lib/tournament-engine";
+import type { GroupStanding } from "@/lib/tournament-engine";
 
 interface Participant {
   id: number;
@@ -65,6 +67,48 @@ function ParticipantAvatar({ name, size = "sm" }: { name: string; size?: "sm" | 
     <span className={`${colors[colorIdx]} ${size === "sm" ? "w-5 h-5 text-[10px]" : "w-7 h-7 text-xs"} rounded-full flex items-center justify-center text-white font-semibold`}>
       {initial}
     </span>
+  );
+}
+function GroupStandingsTable({ standings, getParticipantName }: { standings: GroupStanding[]; getParticipantName: (id: number | null) => string }) {
+  return (
+    <table className="w-full text-xs mb-3">
+      <thead>
+        <tr className="border-b border-gray-200 text-gray-500">
+          <th className="text-left py-1 pr-2 w-8">#</th>
+          <th className="text-left py-1">Participante</th>
+          <th className="text-center py-1 px-1 w-8">Pts</th>
+          <th className="text-center py-1 px-1 w-6">V</th>
+          <th className="text-center py-1 px-1 w-6">E</th>
+          <th className="text-center py-1 px-1 w-6">D</th>
+          <th className="text-center py-1 px-1 w-7">GP</th>
+          <th className="text-center py-1 px-1 w-7">GC</th>
+          <th className="text-center py-1 px-1 w-7">SG</th>
+        </tr>
+      </thead>
+      <tbody>
+        {standings.map((s, i) => {
+          const name = getParticipantName(s.participantId);
+          const sgClass = s.goalDifference > 0 ? "text-green-600" : s.goalDifference < 0 ? "text-red-500" : "text-gray-500";
+          const sgDisplay = s.goalDifference > 0 ? "+" + s.goalDifference : String(s.goalDifference);
+          return (
+            <tr key={s.participantId} className="border-b border-gray-100 last:border-b-0">
+              <td className="py-1 pr-2 text-gray-400 text-center">{i + 1}.</td>
+              <td className="py-1 flex items-center gap-1.5">
+                <ParticipantAvatar name={name} />
+                <span className="text-gray-900">{name}</span>
+              </td>
+              <td className="text-center py-1 font-semibold text-gray-900">{s.points}</td>
+              <td className="text-center py-1 text-gray-500">{s.wins}</td>
+              <td className="text-center py-1 text-gray-500">{s.draws}</td>
+              <td className="text-center py-1 text-gray-500">{s.losses}</td>
+              <td className="text-center py-1 text-gray-500">{s.goalsFor}</td>
+              <td className="text-center py-1 text-gray-500">{s.goalsAgainst}</td>
+              <td className={"text-center py-1 font-medium " + sgClass}>{sgDisplay}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
@@ -194,6 +238,19 @@ export default function ChampionshipPage({ params }: { params: Promise<{ id: str
     }
   }
 
+  const groupStandings: Record<string, GroupStanding[]> = {};
+  for (const letter of groupLetters) {
+    const participantIds = (partsByGroup[letter] || []).map(p => p.id);
+    const results = groupMatches
+      .filter(m => m.group_letter === letter && m.status === "completed")
+      .map(m => ({
+        playerHomeId: m.player_home_id!,
+        playerAwayId: m.player_away_id!,
+        scoreHome: m.score_home!,
+        scoreAway: m.score_away!,
+      }));
+    groupStandings[letter] = calculateGroupStandings(participantIds, results);
+  }
   const allGroupMatchesCompleted = groupMatches.length > 0 && groupMatches.every((m) => m.status === "completed");
   const finalMatch = knockoutMatches.find((m) => m.phase === "final");
   const podium = deriveChampionshipPodium(participants, matches);
@@ -271,6 +328,11 @@ export default function ChampionshipPage({ params }: { params: Promise<{ id: str
                         <ParticipantAvatar name={p.name} /> {p.name}
                       </span>
                     ))}
+                  </div>
+                )}
+                {groupStandings[letter] && groupStandings[letter].length > 0 && (
+                  <div className="mb-3">
+                    <GroupStandingsTable standings={groupStandings[letter]} getParticipantName={getParticipantName} />
                   </div>
                 )}
                 <div className="space-y-2">

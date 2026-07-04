@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { championships, participants, matches } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
@@ -51,8 +51,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const advancingInGroup = getAdvancingCount(Math.max(...groups.map((g) => g.participantIds.length)));
-  const totalAdvancing = groups.length * advancingInGroup;
+  const totalAdvancing = groups.reduce((sum, g) => sum + getAdvancingCount(g.participantIds.length), 0);
 
   if (totalAdvancing >= 2) {
     const knockoutSlots = generateKnockoutBracket(Array.from({ length: totalAdvancing }, (_, i) => i));
@@ -105,3 +104,5 @@ export async function POST(request: Request) {
     groups: groups.map((g) => ({ letter: g.letter, count: g.participantIds.length })),
   });
 }
+
+
