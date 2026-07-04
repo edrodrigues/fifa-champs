@@ -53,16 +53,17 @@ export async function POST(request: Request) {
       advancingIds.push(...advancing);
     }
 
-    const knockoutMatches = allMatches.filter((m) => m.phase !== "group").sort((a, b) => a.display_order - b.display_order);
+    const firstRoundMatches = allMatches
+      .filter((m) => m.round === 0 && m.phase !== "group")
+      .sort((a, b) => a.display_order - b.display_order);
 
-    for (let i = 0; i < knockoutMatches.length && i < advancingIds.length; i += 2) {
-      const homeMatch = knockoutMatches[i];
-      const awayMatch = knockoutMatches[i + 1];
-      if (homeMatch) {
-        await db().update(matches).set({ player_home_id: advancingIds[i] }).where(eq(matches.id, homeMatch.id));
+    let teamIdx = 0;
+    for (const match of firstRoundMatches) {
+      if (teamIdx < advancingIds.length) {
+        await db().update(matches).set({ player_home_id: advancingIds[teamIdx++] }).where(eq(matches.id, match.id));
       }
-      if (awayMatch) {
-        await db().update(matches).set({ player_away_id: advancingIds[i + 1] }).where(eq(matches.id, awayMatch.id));
+      if (teamIdx < advancingIds.length) {
+        await db().update(matches).set({ player_away_id: advancingIds[teamIdx++] }).where(eq(matches.id, match.id));
       }
     }
 

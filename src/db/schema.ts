@@ -3,7 +3,7 @@ import { pgTable, serial, text, integer, timestamp, pgEnum } from "drizzle-orm/p
 export const championshipStatusEnum = pgEnum("championship_status", ["draft", "groups", "knockout", "completed"]);
 export const participantStatusEnum = pgEnum("participant_status", ["active", "eliminated", "winner", "runner_up", "third_place"]);
 export const matchStatusEnum = pgEnum("match_status", ["pending", "completed"]);
-export const matchPhaseEnum = pgEnum("match_phase", ["group", "quarterfinal", "semifinal", "third_place", "final"]);
+export const matchPhaseEnum = pgEnum("match_phase", ["group", "round_of_16", "quarterfinal", "semifinal", "third_place", "final"]);
 
 export const championships = pgTable("championships", {
   id: serial("id").primaryKey(),

@@ -137,34 +137,32 @@ export interface BracketSlot {
 export function generateKnockoutBracket(advancingIds: number[]): BracketSlot[] {
   const shuffled = shuffle(advancingIds);
   const slots: BracketSlot[] = [];
-  const totalRounds = Math.ceil(Math.log2(shuffled.length));
-  const slotsInFirstRound = Math.pow(2, totalRounds - 1);
+  const n = shuffled.length;
+  if (n === 0) return slots;
 
-  for (let i = 0; i < slotsInFirstRound; i++) {
-    const homeIdx = i * 2;
-    if (homeIdx < shuffled.length) {
-      slots.push({ round: 0, position: i, label: `KO-${i + 1}` });
-    }
+  const totalRounds = Math.ceil(Math.log2(n));
+  const fullSize = Math.pow(2, totalRounds);
+  const byes = fullSize - n;
+  const firstRoundMatches = fullSize / 2 - byes;
+
+  for (let i = 0; i < firstRoundMatches; i++) {
+    slots.push({ round: 0, position: i, label: `KO-${i + 1}` });
   }
-  for (let r = 1; r <= totalRounds; r++) {
+
+  for (let r = 1; r < totalRounds; r++) {
     const matchesInRound = Math.pow(2, totalRounds - r - 1);
     for (let p = 0; p < matchesInRound; p++) {
-      slots.push({ round: r, position: p, label: getRoundLabel(r, totalRounds) });
+      slots.push({ round: r, position: p, label: `R${r}-P${p}` });
     }
   }
+
   return slots;
 }
 
-function getRoundLabel(round: number, totalRounds: number): string {
-  if (round === totalRounds) return "Final";
-  if (round === totalRounds - 1) return "Semifinal";
-  if (round === totalRounds - 2) return "Quarterfinal";
-  return `Round ${round + 1}`;
-}
-
-export function getPhaseLabel(round: number, totalRounds: number): "quarterfinal" | "semifinal" | "final" | "group" {
-  if (round === totalRounds) return "final";
-  if (round === totalRounds - 1) return "semifinal";
-  if (round === totalRounds - 2) return "quarterfinal";
+export function getPhaseLabel(round: number, totalRounds: number): "round_of_16" | "quarterfinal" | "semifinal" | "final" | "group" {
+  if (round === totalRounds - 1) return "final";
+  if (round === totalRounds - 2) return "semifinal";
+  if (round === totalRounds - 3) return "quarterfinal";
+  if (round === 0) return "round_of_16";
   return "group";
 }

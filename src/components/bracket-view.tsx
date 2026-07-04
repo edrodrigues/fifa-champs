@@ -98,7 +98,9 @@ function computeLayout(roundMatches: Match[][], cardH: number, gap: number): num
       } else {
         const c1 = layouts[r - 1][2 * p];
         const c2 = layouts[r - 1][2 * p + 1];
-        const midY = (c1 + c2 + cardH) / 2;
+        const y1 = c1 != null ? c1 : 2 * p * (cardH + gap);
+        const y2 = c2 != null ? c2 : (2 * p + 1) * (cardH + gap);
+        const midY = (y1 + y2 + cardH) / 2;
         rowLayouts.push(midY - cardH / 2);
       }
     }
@@ -118,8 +120,10 @@ function ConnectorSVG({ layouts, roundIdx, cardH }: { layouts: number[][]; round
 
   const pairs: { y1: number; y2: number; joinY: number }[] = [];
   for (let i = 0; i < right.length; i++) {
-    const y1 = left[2 * i] + cardH / 2;
-    const y2 = left[2 * i + 1] + cardH / 2;
+    const c1 = left[2 * i];
+    const c2 = left[2 * i + 1];
+    const y1 = (c1 != null ? c1 : 2 * i * (cardH + CARD_GAP)) + cardH / 2;
+    const y2 = (c2 != null ? c2 : (2 * i + 1) * (cardH + CARD_GAP)) + cardH / 2;
     const joinY = right[i] + cardH / 2;
     pairs.push({ y1, y2, joinY });
   }
