@@ -67,6 +67,25 @@ export async function POST(request: Request) {
       }
     }
 
+    if (teamIdx < advancingIds.length) {
+      const roundOneMatches = allMatches
+        .filter((m) => m.phase !== "group" && m.round !== null && m.bracket_position !== null && m.round === 1)
+        .sort((a, b) => a.display_order - b.display_order);
+
+      const fedPositions = new Set(firstRoundMatches.map((m) => Math.floor(m.bracket_position! / 2)));
+
+      for (const match of roundOneMatches) {
+        if (fedPositions.has(match.bracket_position!)) continue;
+        if (teamIdx >= advancingIds.length) break;
+        if (teamIdx < advancingIds.length) {
+          await db().update(matches).set({ player_home_id: advancingIds[teamIdx++] }).where(eq(matches.id, match.id));
+        }
+        if (teamIdx < advancingIds.length) {
+          await db().update(matches).set({ player_away_id: advancingIds[teamIdx++] }).where(eq(matches.id, match.id));
+        }
+      }
+    }
+
     await db().update(championships).set({ status: "knockout", updated_at: new Date() }).where(eq(championships.id, championship_id));
 
     return NextResponse.json({ success: true, advancingIds });

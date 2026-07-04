@@ -1,0 +1,1 @@
+ALTER TYPE "public"."match_phase" ADD VALUE 'round_of_16' BEFORE 'quarterfinal';
